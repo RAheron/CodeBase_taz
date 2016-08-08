@@ -1,0 +1,17 @@
+Private Sub imgYukk_Click()
+
+    DoCmd.OpenForm "frmMessageBox"
+    Forms![frmMessageBox]![txtMessage].SetFocus
+    
+    Forms![frmMessageBox]![txtMessage].Text = "Emails have been created and sent!"
+    
+    '   Choose the image
+    '   imgBlue    imgDevel    imgNaNa  imgWAAA    imgYellow    imgAngel    imgCool    Aggh    Yukk
+    Forms![frmMessageBox]![imgYukk].Visible = True
+    
+    Forms![frmMessageBox].Caption = "Emails Done"
+    Forms![frmMessageBox].Refresh
+    
+    Forms![frmMessageBox]![cmdOK].SetFocus
+
+End Sub
