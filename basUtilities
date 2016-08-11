@@ -1,0 +1,818 @@
+Option Compare Database
+Option Explicit
+
+'------------------------------------------------------------------------
+'   General GLOBAL variables used in muptiple functions/subs
+'
+Global CR                   As String    '   replaced by vbCRLF
+Global gDisplayOrPrint      As Integer   '   1 to Display  0 to Print
+Global X                    As Variant
+
+'--------------------------------------------------------------------------------------------------
+'   Used in the Rounding function
+'
+Public Const vb_roundup = 1
+Public Const vb_rounddown = 0
+
+'-------------------------------------------------------------------------------------------------
+'   Used in the ComputerName function
+'
+Declare Function GetComputerName& Lib "kernel32" Alias "GetComputerNameA" (ByVal lpBuffer As String, nSize As Long)
+
+Public Const MAX_COMPUTERNAME_LENGTH = 15
+
+'-------------------------------------------------------------------------------------------------
+'   Used by the StartClock and StopClock subs
+'
+Private Declare Function GetTickCount Lib "kernel32" () As Long
+
+Private StartTime           As Double
+
+'----------------------------------------------------------------------
+'   Used by GetUser function
+'
+Declare Function GetUserName Lib "advapi32.dll" Alias "GetUserNameA" (ByVal lpBuffer As String, nSize As Long) As Long
+'----------------------------------------------------------------------
+'   Used by the GetCurrentUserName function
+'
+Public gCurrentUser         As String
+Public Function AccessVersionID() As String
+
+
+   Select Case SysCmd(acSysCmdAccessVer)
+         Case 7: AccessVersionID = "95"
+         Case 8: AccessVersionID = "97"
+         Case 9: AccessVersionID = "2000"
+         Case 10: AccessVersionID = "2002"
+         Case 11: AccessVersionID = "2003"
+         Case 12: AccessVersionID = "2007"
+         Case 13: AccessVersionID = "Pirated!"
+         Case 14: AccessVersionID = "2010"
+         Case Else: AccessVersionID = "Unknown"
+
+   End Select
+
+ End Function            'AccessVersionID()
+
+Function RoundToNearest(Amt As Double, RoundAmt As Variant, Direction As Integer) As Double
+On Error Resume Next
+'-------------------------------------------------------------------------
+'
+'   Function used to round a number up or down to the nearest
+'    place.
+'
+'   INPUT:  Amt         Number to be rounded
+'           RoundAmt    Place to be round to  1, .1, .01 ...
+'           Direction   Up or Down
+'
+'   OUTPUT:             Number rounded
+'
+'
+'   The following two Constants are required by this function
+'
+'           Public Const vb_roundup = 1
+'           Public Const vb_rounddown = 0
+'
+'--------------------------------------------------------------------------
+
+Dim Temp            As Double
+
+    Temp = Amt / RoundAmt
+        If Int(Temp) = Temp Then
+            RoundToNearest = Amt
+         
+         Else
+            If Direction = vb_rounddown Then
+               Temp = Int(Temp)
+            
+            Else
+               Temp = Int(Temp) + 1
+            
+            End If
+            
+            RoundToNearest = Temp * RoundAmt
+         
+         End If
+
+End Function
+Function GetPath(sFileName As String) As String
+On Error GoTo Err_GetPath
+'----------------------------------------------------------------
+'   Function to take a complete file name and strip the path out
+'    to be returned.
+'
+'   INPUT:      strFileName     Complete file name including path
+'
+'   OUTPUT:                     Path of given filename
+'
+'----------------------------------------------------------------
+
+Dim sPath             As String
+Dim lngLoc              As Long
+Dim lngStart            As Long
+
+    lngStart = 1
+    Do
+        lngLoc = InStr(lngStart, sFileName, "\")
+        If lngLoc = 0 Then
+            Exit Do
+        
+        Else
+            sPath = Left(sFileName, lngLoc)
+            lngStart = lngLoc + 1
+        
+        End If
+    
+    Loop
+    GetPath = sPath
+
+Exit_GetPath:
+    Exit Function
+
+Err_GetPath:
+    MsgBox "Error Number:  " & Err.Number & vbCrLf & Err.Description, vbInformation, "basUtilities - GetPAth"
+    
+    'gobjErrorHandler.ErrorProcess
+    'gobjErrorHandler.ErrorHandler "basUtilities GetPath", True, vbInformation
+
+    Resume Exit_GetPath
+    Resume
+    
+End Function
+Function ProperCase(sName As Variant) As Variant
+'----------------------------------------------------------------
+'   Function used to correct capitalization of a given string
+'
+'   INPUT:      sName       String to be correctly capitalized
+'
+'   OUTPUT:                 Correctly capitalized string
+'
+'       examples:   Duncan
+'                   Maccloud
+'                   Mac Cloud
+'
+'----------------------------------------------------------------
+On Error GoTo Err_ProperCase
+
+Dim sVar              As String
+Dim intChar             As Integer
+Dim i                   As Integer
+Dim fWasSpace           As Integer    'Flag: was previous character a space?
+
+    If IsNull(sName) Then
+        Exit Function
+    
+    End If
+
+    sVar = sName
+    fWasSpace = True
+    For i = 1 To Len(sVar)
+        intChar = Asc(Mid$(sVar, i, 1))
+        Select Case intChar
+            Case 65 To 90               'A - Z
+                If Not fWasSpace Then
+                    Mid$(sVar, i, 1) = Chr$(intChar Or &H20)
+                
+                End If
+            
+            Case 97 To 122              'a - z
+                If fWasSpace Then
+                    Mid$(sVar, i, 1) = Chr$(intChar And &HDF)
+                
+                End If
+        
+        End Select
+        
+        fWasSpace = (intChar = 32)
+    Next
+    
+    ProperCase = sVar
+
+Exit_ProperCase:
+    Exit Function
+
+Err_ProperCase:
+    'gobjErrorHandler.ErrorProcess
+    'gobjErrorHandler.ErrorHandler "basUitilities ProperCase", True, vbInformation
+
+    Resume Exit_ProperCase
+    Resume
+    
+End Function
+Function CheckFile(sFileName As String) As Boolean
+On Error GoTo Err_CheckFile
+'-----------------------------------------------------------------------------------
+'   Function used to check for existince of file entered for data import or export
+'
+'   INPUT:      sFileName         File name to be checked
+'
+'   OUTPUT:                         True if found  False if not
+'
+'-----------------------------------------------------------------------------------
+
+Dim sCurDir           As String
+Dim sDir              As String
+
+    If sFileName = "" Then
+        CheckFile = False
+    
+    Else
+        If right(sFileName, 1) = "\" Then
+            sCurDir = CurDir
+            If Len(sFileName) > 3 Then
+                sDir = Left(sFileName, Len(sFileName) - 1)
+                ChDir sDir
+            
+            Else
+                ChDir sFileName
+            
+            End If
+            
+            CheckFile = True
+        
+        Else
+            If Dir(sFileName) = "" Then
+                CheckFile = False
+            
+            Else
+                CheckFile = True
+            
+            End If
+        
+        End If
+    
+    End If
+
+Exit_CheckFile:
+    If Trim(sCurDir) <> "" Then
+        ChDir sCurDir
+    
+    End If
+    Exit Function
+
+Err_CheckFile:
+    CheckFile = False
+    
+    'gobjErrorHandler.ErrorProcess
+    'gobjErrorHandler.ErrorHandler "basUtilities CheckFile", True, vbInformation
+
+    Resume Exit_CheckFile
+    Resume
+    
+End Function
+Function ClearStatusBar()
+On Error GoTo Err_ClearStatusBar
+'-------------------------------------------------------
+'   Function to clear the contents of the StatusBar
+'
+'   INPUT:      none
+'
+'   OUTPUT:     none
+'
+'-------------------------------------------------------
+
+Dim RetVal          As Variant
+
+    RetVal = SysCmd(acSysCmdClearStatus)
+
+Exit_ClearStatusBar:
+    Exit Function
+
+Err_ClearStatusBar:
+    'gobjErrorHandler.ErrorProcess
+    'gobjErrorHandler.ErrorHandler "basUtilities ClearStatusBar", True, vbInformation
+
+    Resume Exit_ClearStatusBar
+    Resume
+    
+End Function
+Function StatusBar(sStatusText As String)
+On Error GoTo Err_StatusBar
+'-----------------------------------------------------
+'   Function to post messages to the StatusBar
+'
+'   INPUT:      sStatusText       Message to be posted
+'
+'   OUTPUT:     none
+'
+'-----------------------------------------------------
+
+Dim RetVal          As Variant
+    
+    RetVal = SysCmd(acSysCmdSetStatus, sStatusText)
+
+Exit_StatusBar:
+    Exit Function
+
+Err_StatusBar:
+    'gobjErrorHandler.ErrorProcess
+    'gobjErrorHandler.ErrorHandler "basUtilities StatusBar", True, vbInformation
+
+    Resume Exit_StatusBar
+    Resume
+    
+End Function
+Function ComputerName() As String
+On Error GoTo Err_ComputerName
+'-----------------------------------------------------------------
+'   Function to find the name of the users computer
+'
+'   INPUT:      none
+'
+'   OUTPUT:                 Name of users computer
+'
+'   API and Constant used by this function
+'
+'   Declare Function GetComputerName& Lib "kernel32" Alias "GetComputerNameA" (ByVal lpBuffer As String, nSize As Long)
+'
+'       Public Const MAX_COMPUTERNAME_LENGTH = 15
+'
+'-----------------------------------------------------------------
+
+Dim sComputerName             As String
+
+    sComputerName = String$(MAX_COMPUTERNAME_LENGTH + 1, 0)
+    
+Dim dl          As Long
+Dim sz          As Long
+
+    sz = MAX_COMPUTERNAME_LENGTH + 1
+    dl = GetComputerName(sComputerName, sz)
+    
+    ComputerName = TrimOffNull(sComputerName)
+    
+Exit_ComputerName:
+    Exit Function
+
+Err_ComputerName:
+    'gobjErrorHandler.ErrorProcess
+    'gobjErrorHandler.ErrorHandler "basUtilities ComputerName", True, vbInformation
+
+    Resume Exit_ComputerName
+    Resume
+
+End Function
+Function TrimOffNull(sData As Variant) As Variant
+On Error GoTo Err_TrimOffNull
+'----------------------------------------------------------------
+'
+'   Function used to trim NULL off a given data string
+'
+'   INPUT:      sData       String to be trimed
+'
+'   OUTPUT:                 Trimed string
+'
+'----------------------------------------------------------------
+
+Dim bChar               As Boolean
+Dim intRC               As Integer
+
+    If sData = "" Then
+        TrimOffNull = ""
+        Exit Function
+    
+    End If
+    
+    intRC = InStr(sData, Chr(&H0))
+    If intRC = 0 Then
+        TrimOffNull = sData
+    
+    Else
+        TrimOffNull = Left(sData, intRC - 1)
+        TrimOffNull = Trim(TrimOffNull)
+    
+    End If
+
+Exit_TrimOffNull:
+    Exit Function
+    
+Err_TrimOffNull:
+    'gobjErrorHandler.ErrorProcess
+    'gobjErrorHandler.ErrorHandler "basUtilities TrimOffNull", True, vbInformation
+
+    Resume Exit_TrimOffNull
+    Resume
+    
+End Function
+Sub StartClock()
+'--------------------------------------------------------
+'
+'   Function used to start a timer
+'
+'   INPUT:      none
+'
+'   OUTPUT:     none
+'
+'   API used by this function
+'
+'       Private Declare Function GetTickCount Lib "kernel32" () As Long
+'
+'       Private StartTime       As Double
+'
+'-------------------------------------------------------------
+
+  StartTime = GetTickCount()
+  
+End Sub
+
+Sub StopClock()
+'--------------------------------------------------------
+'
+'   Function used to stop the timer and display a message
+'    box containing the number of seconds that has elasped
+'
+'   INPUT:      none
+'
+'   OUTPUT:     none
+'
+'   API used by this function
+'
+'       Private Declare Function GetTickCount Lib "kernel32" () As Long
+'
+'-------------------------------------------------------------
+
+Dim dur                 As Double
+
+Dim s                   As String
+Dim m                   As Double
+
+  
+  dur = GetTickCount() - StartTime
+  
+  s = Format(dur / 1000, "0.00")
+  
+  If CDbl(s) / 60 >= 1 Then
+        'Debug.Print CDbl(s) & "    " & CDbl(s) / 60
+        'Debug.Print (CDbl(s) / 60) - (Int(CDbl(s) / 60))
+        
+    m = Int(CDbl(s) / 60)
+    s = Format((((CDbl(s) / 60) - (Int(CDbl(s) / 60))) * 60), "0.00")
+    
+    
+    MsgBox "It took " & m & " " & IIf(m > 1, "minutes ", "minute ") & s & " seconds", vbInformation + vbOKOnly, "Timer"
+    
+  Else
+    MsgBox "It took " & s & " seconds", vbInformation + vbOKOnly, "Timer"
+    
+  End If
+  
+    
+End Sub
+Function GetUser() As String
+On Error GoTo Err_GetUser
+'-----------------------------------------------------------------
+'
+'   Function to get the User name
+'
+'   INPUT:      none
+'
+'   OUTPUT:                 Users name
+'
+'   API used by this function
+'
+'   Declare Function GetUserName Lib "advapi32.dll" Alias "GetUserNameA" (ByVal lpBuffer As String, nSize As Long) As Long
+'
+'-----------------------------------------------------------------
+
+Dim sString           As String
+Dim lngCount            As Long
+Dim lngUserName         As Long
+Dim sUserName         As String
+
+Dim X                   As Integer
+
+    lngCount = 199
+    sString = String$(200, 0)
+    
+    lngUserName = GetUserName(sString, lngCount)
+      '  Debug.Print left$(sString, lngCount); lngCount
+      
+    sUserName = Left$(sString, lngCount)
+    
+    X = InStr(1, sUserName, Chr(0))
+    
+    GetUser = Trim((Left$(sString, (X - 1))))
+        
+Exit_GetUser:
+    Exit Function
+    
+Err_GetUser:
+    'gobjErrorHandler.ErrorProcess
+    'gobjErrorHandler.ErrorHandler "basUtilities GetUser", True, vbInformation
+
+    Resume Exit_GetUser
+    Resume
+    
+End Function
+
+Function GetCurrentUserName()
+On Error GoTo Err_GetCurrentUserName
+'--------------------------------------------------------------
+'
+'   This function get the current user's name
+'
+'   INPUT:  None
+'
+'   OUPUT:                      Name of Current User or Current Computer Name
+'
+'   APIs, Constants, and Global used by this function
+'
+'   Declare Function GetComputerName& Lib "kernel32" Alias "GetComputerNameA" (ByVal lpBuffer As String, nSize As Long)
+'
+'       Public Const MAX_COMPUTERNAME_LENGTH = 15
+'       Public gCurrentUser         As String
+'
+'-----------------------------------------------------------------------------------
+
+    If gCurrentUser = "" Then gCurrentUser = CurrentUser()
+    
+    If gCurrentUser = "Admin" Then
+        GetCurrentUserName = ComputerName()
+        
+    Else
+        GetCurrentUserName = gCurrentUser
+        
+    End If
+
+Exit_GetCurrentUserName:
+    Exit Function
+    
+Err_GetCurrentUserName:
+    'gobjErrorHandler.ErrorProcess
+    'gobjErrorHandler.ErrorHandler "basUtilities GetCurrentUserName", True, vbInformation
+    
+    'MsgBox "Error Number " & Err.Number & vbCrLf & Err.Description, vbInformation, "GetCurrentUserName"
+    Resume Exit_GetCurrentUserName
+    Resume
+
+End Function
+
+Function FileChange(sFileName As String) As String
+On Error GoTo Err_FileChange
+'--------------------------------------------------------------
+'
+'   This function changes the extension of a given file name to TXT
+'
+'   INPUT:  sFileName           Name of file to be changed
+'
+'   OUPUT:
+'
+'-----------------------------------------------------------------------------------
+Dim sNewFile                As String
+
+Dim iStringLength           As Integer
+
+
+    iStringLength = Len(sFileName)
+    iStringLength = iStringLength - 4
+    
+    sNewFile = Left(sFileName, iStringLength)
+    sNewFile = sNewFile & ".txt"
+    
+    If Dir(sNewFile) <> "" Then
+      Kill sNewFile
+    
+    End If
+    
+    
+    FileCopy sFileName, sNewFile
+    'Kill sFileName
+
+    FileChange = sNewFile
+    
+    
+Exit_FileChange:
+    Exit Function
+    
+Err_FileChange:
+    MsgBox "Error Number " & Err.Number & vbCrLf & Err.Description, vbInformation, "basUtilities - FileChange"
+    
+    Resume Exit_FileChange
+    Resume
+    
+End Function
+
+
+Public Sub SetStartupProperties()
+'------------------------------------------------------
+'
+'   Procedure used to make chnages to StartUp properties.
+'
+'------------------------------------------------------
+
+    ChangeProperty "StartupForm", dbText, "Customers"
+    ChangeProperty "StartupShowDBWindow", dbBoolean, False
+    ChangeProperty "StartupShowStatusBar", dbBoolean, False
+    
+    ChangeProperty "AllowBuiltinToolbars", dbBoolean, False
+    ChangeProperty "AllowFullMenus", dbBoolean, True
+    ChangeProperty "AllowBreakIntoCode", dbBoolean, False
+    ChangeProperty "AllowSpecialKeys", dbBoolean, True
+    ChangeProperty "AllowBypassKey", dbBoolean, True
+
+End Sub
+
+Function ChangeProperty(sPropName As String, varPropType As Variant, varPropValue As Variant) As Integer
+On Error GoTo Err_ChangeProperty
+'-----------------------------------------------------------------------
+'
+'   Function to set StartUp property values
+'
+'   INPUT:  sPropName         Name of property being chnages
+'           varPropType         Variable type of the property
+'           varPropValue        Value to be given to the property
+'
+'   OUTPUT:                     True or False based on sucess of changing property
+'
+'-----------------------------------------------------------------------
+
+Dim PropertyDB      As DAO.Database
+Dim PropertyPRP     As Property
+
+Const conPropNotFoundError = 3270
+
+    Set PropertyDB = DBEngine(0)(0)
+    
+    PropertyDB.Properties(sPropName) = varPropValue
+    ChangeProperty = True
+
+Exit_ChangeProperty:
+    Exit Function
+
+Err_ChangeProperty:
+    If Err = conPropNotFoundError Then  ' Property not found.
+        Set PropertyPRP = PropertyDB.CreateProperty(sPropName, varPropType, varPropValue)
+        PropertyDB.Properties.Append PropertyPRP
+        
+        Resume Next
+        
+    Else
+        ' Unknown error.
+        'gobjErrorHandler.ErrorProcess
+        'gobjErrorHandler.ErrorHandler "basUtilities SetTabStop", True, vbInformation
+        
+        'MsgBox "Error Number " & Err.Number & vbCrLf & Err.Description, vbExclamation, "ChangeProperty"
+        
+        ChangeProperty = False
+        Resume Exit_ChangeProperty
+        Resume
+        
+    End If
+    
+End Function
+
+Function f_iIsLoaded(ByVal sFormName As String) As Integer
+'Returns a 0 if form is not open or a -1 if Open
+    If SysCmd(acSysCmdGetObjectState, acForm, sFormName) <> 0 Then
+        If Forms(sFormName).CurrentView <> 0 Then
+            f_iIsLoaded = True
+        
+        End If
+    
+    End If
+    
+End Function
+
+
+Public Function FindDBPath() As String
+On Error GoTo Err_FindDBPath
+
+
+Dim intPos                          As Integer
+Dim intNewPos                       As Integer
+
+Dim sCurrentDatabaseName          As String
+Dim sSearchPath                   As String
+
+    '   Get location of current database and parse the directory information
+    sCurrentDatabaseName = CurrentDb.Name
+        
+    '   Strip the db path from the CurrentDB.Name
+        Do
+            intNewPos = intPos
+            intPos = InStr(intPos + 1, sCurrentDatabaseName, "\")
+            
+        Loop While intPos
+    
+    sSearchPath = Left$(Trim$(sCurrentDatabaseName), intNewPos)
+    
+    FindDBPath = sSearchPath
+
+Exit_FindDBPath:
+    Exit Function
+    
+Err_FindDBPath:
+    MsgBox "Error Number " & Err.Number & vbCrLf & Err.Description, vbExclamation, "FindDBPath"
+    
+    Resume Exit_FindDBPath
+    Resume
+    
+End Function
+
+Sub CheckReferences()
+
+Dim i           As Integer
+Dim iFlag       As Integer
+
+    iFlag = 0
+    
+    For i = 1 To References.Count
+        'Debug.Print References.Item(i).Name
+        'Debug.Print References.Item(i).FullPath
+        'Debug.Print References.Item(i).Guid
+        'Debug.Print References.Item(i).Major
+        'Debug.Print References.Item(i).Minor
+        
+        If References.Item(i).Name = "DAO" Then
+            iFlag = 1
+            
+        Else
+            '   No Action
+            
+        End If
+        
+    Next
+    
+        If iFlag = 1 Then
+            '   No Action
+            
+        Else
+            References.AddFromGuid "{00025E01-0000-0000-C000-000000000046}", 5, 0
+                     
+        End If
+    
+End Sub
+
+
+Function FindFile(sPath As String, sFilter As String) As String
+'--------------------------------------------------------------
+'
+'   Opens the "Select File" common windows dialog box
+'     to allow the user to find and select a file
+'
+'--------------------------------------------------------------
+    
+Dim lngFlags                As Long
+
+Dim gfni                    As adh_accOfficeGetFileNameInfo
+    
+    
+   
+    
+    With gfni
+        .lngFlags = lngFlags
+        .strFilter = sFilter
+        .lngFilterIndex = 0
+        .strDlgTitle = "Select File"
+        .strInitialDir = sPath & ""
+    
+    End With
+    
+    
+    If adhOfficeGetFileName(gfni, gbolOpen) = adhcAccErrSuccess Then
+        FindFile = Trim(gfni.strFile)
+    
+    End If
+    
+End Function
+
+Public Function RandomNumber() As Long
+
+Dim iValue              As Integer
+Dim iCounter            As Integer
+
+
+    Randomize
+    
+    iCounter = 101
+    
+    iValue = Int((1000 * Rnd((iCounter)) + 1))
+    
+    RandomNumber = Int((642 * Rnd(iValue)) + 1)
+    
+    
+
+End Function
+
+Function Age(sBirthday As String, sDateToday As String) As Integer
+' Returns the Age in years between 2 dates
+' Doesn't handle negative date ranges i.e. sBirthday > DateToday
+
+Dim dtBirthday          As Date
+Dim dtDateToday         As Date
+
+    dtBirthday = CDate(sBirthday)
+    dtDateToday = CDate(sDateToday)
+    
+    
+    If Month(dtDateToday) < Month(dtBirthday) Or (Month(dtDateToday) = Month(dtBirthday) And Day(dtDateToday) < Day(dtBirthday)) Then
+        Age = Year(dtDateToday) - Year(dtBirthday) - 1
+    
+    Else
+        Age = Year(dtDateToday) - Year(dtBirthday)
+    
+    End If
+    
+    
+End Function
+
