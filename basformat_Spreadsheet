@@ -1,0 +1,212 @@
+Option Compare Database
+Option Explicit
+
+Public Function FormatWOTC(sPath As String, sFileName As String) As Boolean
+'**********************************************************
+'   FromatWOTC
+'
+'   INPUT   sPath       Path to the Excel file to be formatted
+'           sFileName   Name of file to be formatted
+'
+'   OUTPUT  NONE
+'
+'   This code is designed to open the file selected and passed in.
+'   The file is then formatted based on the below code.
+'       Rows removed, column names changed...
+'   When this has been completed the updated file is then
+'     saved with a new name, WOTC.xls, in the sPath folder.
+'     This is the name and path of the file for the linked table,
+'     xls_tblWorkOpportunityTaxCredit.
+'
+'***********************************************************
+Dim objexcel            As Excel.Application
+Dim wkbWOTC             As Excel.Workbook
+Dim wksWOTC             As Excel.Worksheet
+Dim rngCurrentCell      As Excel.Range
+
+Dim iCounter            As Integer
+Dim iCounterToo         As Integer
+
+Dim sWOTCFile           As String
+
+    
+    FormatWOTC = False
+    
+    
+    
+    Set objexcel = New Excel.Application
+        objexcel.Visible = True
+        
+    sWOTCFile = sPath & sFileName
+    
+    If sFileName = "" Then
+        Forms![frmMain].[lblWhatIsRunning].Caption = "File MUST Be Selected"
+        
+        
+    Else
+        Set wkbWOTC = objexcel.Workbooks.Open(sWOTCFile)
+        
+        For iCounter = 1 To wkbWOTC.Sheets.Count
+            Set wksWOTC = wkbWOTC.Sheets(iCounter)
+            wksWOTC.Activate
+            
+            If InStr(1, wksWOTC.Cells(1, 1), "WOTC") > 0 Then
+                '   Remove any MERGED cells
+                wksWOTC.Range("A1:H5").Select
+                With Selection
+                    .MergeCells = False
+                
+                End With
+                
+                '   Remove any rows above the main cloumn header row
+                iCounterToo = 1
+                Do Until wksWOTC.Cells(1, 1).Value = "Division"
+                        'Debug.Print wksWOTC.Cells(1, 1).Value
+                    Rows("1:1").Select
+                    Selection.Delete Shift:=xlUp
+                    'wksWOTC.Rows.Delete shift:=xlUp
+                    
+                    iCounterToo = iCounterToo + 1
+                    If iCounterToo = 10 Then Exit Do
+                    
+                Loop
+                
+                '   Make changes to the worksheet and columns names on WOTC worksheet
+                If wksWOTC.Cells(1, 8).Value = "Eligible" Then
+                    '   Rename the Percentage cloumns
+                    wksWOTC.Cells(1, 7) = "CalledInPercentage"
+                    wksWOTC.Cells(1, 8) = "EligiblePercentage"
+                    
+                    '   Rename the worksheet conatining the required WOTC data
+                    wksWOTC.Name = "WOTC_PL"
+                
+                Else
+                    '   No Action
+                    
+                End If
+                
+                
+            Else
+                '   No Action
+            
+            End If
+        
+        Next iCounter
+    
+        Set wksWOTC = wkbWOTC.Sheets("WOTC_PL")
+        wksWOTC.Activate
+        wksWOTC.Range("A1").Select
+        
+        sFileName = "WOTC.xls"
+        
+        wkbWOTC.SaveAs sPath & sFileName
+        wkbWOTC.Close
+        
+        objexcel.Quit
+        Set objexcel = Nothing
+            
+        FormatWOTC = True
+        
+    End If
+
+End Function
+
+Public Function FormatWOTC_LocationSummary(sPath As String, sFileName As String) As Boolean
+'**********************************************************
+'   FromatWOTC
+'
+'   INPUT   sPath       Path to the Excel file to be formatted
+'           sFileName   Name of file to be formatted
+'
+'   OUTPUT  NONE
+'
+'   This code is designed to open the file selected and passed in.
+'   The file is then formatted based on the below code.
+'       Rows removed, column names changed...
+'   When this has been completed the updated file is then
+'     saved with a new name, WOTC.xls, in the sPath folder.
+'     This is the name and path of the file for the linked table,
+'     xls_tblWorkOpportunityTaxCredit.
+'
+'***********************************************************
+Dim objexcel            As Excel.Application
+Dim wkbWOTC             As Excel.Workbook
+Dim wksWOTC             As Excel.Worksheet
+Dim rngCurrentCell      As Excel.Range
+
+Dim iCounter            As Integer
+Dim iCounterToo         As Integer
+
+Dim sWOTCFile           As String
+
+    
+    FormatWOTC_LocationSummary = False
+    
+    
+    
+    Set objexcel = New Excel.Application
+        objexcel.Visible = True
+        
+    sWOTCFile = sPath & sFileName
+    
+    If sFileName = "" Then
+        Forms![frmMain].[lblWhatIsRunning].Caption = "File MUST Be Selected"
+        
+        
+    Else
+        Set wkbWOTC = objexcel.Workbooks.Open(sWOTCFile)
+        
+        For iCounter = 1 To wkbWOTC.Sheets.Count
+            Set wksWOTC = wkbWOTC.Sheets(iCounter)
+            wksWOTC.Activate
+            
+            If InStr(1, wksWOTC.Cells(1, 1), "WOTC") > 0 Then
+                '   Remove any MERGED cells
+                wksWOTC.Range("A1:H5").Select
+                With Selection
+                    .MergeCells = False
+                
+                End With
+                
+                '   Remove any rows above the main cloumn header row
+                iCounterToo = 1
+                Do Until wksWOTC.Cells(1, 1).Value = "Division"
+                        'Debug.Print wksWOTC.Cells(1, 1).Value
+                    Rows("1:1").Select
+                    Selection.Delete Shift:=xlUp
+                    'wksWOTC.Rows.Delete shift:=xlUp
+                    
+                    iCounterToo = iCounterToo + 1
+                    If iCounterToo = 10 Then Exit Do
+                    
+                Loop
+                
+                '   Rename the worksheet conatining the required WOTC data
+                wksWOTC.Name = "WOTC_PL"
+                    
+            Else
+                '   No Action
+            
+            End If
+        
+        Next iCounter
+    
+        Set wksWOTC = wkbWOTC.Sheets("WOTC_PL")
+        wksWOTC.Activate
+        wksWOTC.Range("A1").Select
+        
+        sFileName = "WOTC_LocationSummary.xls"
+        
+        wkbWOTC.SaveAs sPath & sFileName
+        wkbWOTC.Close
+        
+        objexcel.Quit
+        Set objexcel = Nothing
+            
+        FormatWOTC_LocationSummary = True
+        
+    End If
+
+End Function
+
+
